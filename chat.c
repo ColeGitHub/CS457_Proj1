@@ -1,34 +1,56 @@
 #include <ctype.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
+#define PORT "3490"
+
+int parseargs(int argc, char **argv, char *ip_addr, char *port);
 int isvalidport(char *port);
 int isvalidip(char *ip_addr);
+int start_server(void);
 
 /* Store IP address string in sockaddr_in struct:
- * inet_pton(AF_INET "192.168.0.1", &(sa.sin_addr));
+ * inet_pton(AF_INET, "192.168.0.1", &(sa.sin_addr));
  */
 
 int main(int argc, char **argv) {
     char *ip_addr = NULL;
     char *port = NULL;
-    int index;
     int c;
 
     opterr = 0;
     
-    if (argc == 0) {
+    if (argc == 1) {
         // set to server
+        printf("This is a server\n");
     }
     else {
         // handle arguments
+        if(parseargs( argc, argv, ip_addr, port ) == 1) {
+            return 1;
+        }
+        printf("This is a client\n");
     }
-    while ((c = getopt(argc, argv, "hp:s:")) != -1)
+    printf("IP: %s\n", ip_addr);
+    printf("Port: %s\n", port);
+	return 0;
+}
+
+int parseargs(int argc, char **argv, char *ip_addr, char *port) {
+    int c;
+    opterr = 0;
+
+    while ((c = getopt(argc, argv, "hp:s:")) != -1) {
         switch(c) {
             case 'h':
                 // print help message
@@ -37,21 +59,24 @@ int main(int argc, char **argv) {
             case 's':
                 ip_addr = optarg;
                 printf("ip address: %s\n", ip_addr);
-                if (isvalidip(ip_addr))
+                if (isvalidip(ip_addr)) {
                     printf("IP is valid\n");
-                else
+                }
+                else {
                     printf("IP is not valid\n");
-                // verify valid input
+                    return 1;
+                }
                 break;
             case 'p':
                 port = optarg;
                 printf("port: %s\n", port);
-                if (isvalidport(port))
+                if (isvalidport(port)) {
                     printf("Port is valid\n");
-                else
+                }
+                else {
                     printf("Port is not valid\n");
-                // verify valid input
-                //
+                    return 1;
+                }
                 break;
             case '?':
                 if (optopt == 's' || optopt == 'p')
@@ -64,9 +89,8 @@ int main(int argc, char **argv) {
             default:
                 printf("No arguments provided\n");
                 abort();
-                
         }
-	return 0;
+    }
 }
 
 int isvalidport(char *port) {
@@ -87,3 +111,37 @@ int isvalidip(char *ip_addr) {
     } 
     return 1;
 }
+
+void *get_in_addr(struct sockaddr *sa) {
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+/*int start_server(void) {
+    int sockfd, new_fd;
+    struct addrinfo hints, *servinfo, *p;
+    struct sockaddr_storage their_addr; // connector's addr
+    socklen_t sin_size;
+    struct sigaction sa;
+    int yes=1;
+    char s[INET_ADDRSTRLEN]
+    int rv;
+
+    memset(&hints, 0, sizeof hints);
+    hint.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    } 
+
+    for (p = servinfo; p != NULL; p = p->ai_next) {
+
+    }
+
+}*/
